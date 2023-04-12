@@ -17,9 +17,6 @@ graphCutAlgo = {"ap": augmentingPath,
                 "pr": pushRelabel, 
                 "bk": boykovKolmogorov}
 SIGMA = 7.0  # smaller means more sensitive to edges, smaller cuts
-OBJCOLOR, BKGCOLOR = (0, 0, 255), (0, 255, 0)
-OBJCODE, BKGCODE = 1, 2
-OBJ, BKG = "OBJ", "BKG"
 
 CUTCOLOR = (0, 0, 255)
 
@@ -34,52 +31,6 @@ def show_image(image):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
     
-def plantSeed(image):
-
-    def drawLines(x, y, pixelType):
-        if pixelType == OBJ:
-            color, code = OBJCOLOR, OBJCODE
-        else:
-            color, code = BKGCOLOR, BKGCODE
-        cv2.circle(image, (x, y), radius, color, thickness)
-        cv2.circle(seeds, (x // SF, y // SF), radius // SF, code, thickness)
-
-    def onMouse(event, x, y, flags, pixelType):
-        global drawing
-        if event == cv2.EVENT_LBUTTONDOWN:
-            drawing = True
-            drawLines(x, y, pixelType)
-        elif event == cv2.EVENT_MOUSEMOVE and drawing:
-            drawLines(x, y, pixelType)
-        elif event == cv2.EVENT_LBUTTONUP:
-            drawing = False
-
-    def paintSeeds(pixelType):
-        print("Planting {} seeds".format(pixelType))
-        global drawing
-        drawing = False
-        windowname = "Plant " + pixelType + " seeds"
-        cv2.namedWindow(windowname, cv2.WINDOW_AUTOSIZE)
-        cv2.setMouseCallback(windowname, onMouse, pixelType)
-        while (1):
-            cv2.imshow(windowname, image)
-            if cv2.waitKey(1) & 0xFF == 27:
-                break
-        cv2.destroyAllWindows()
-    
-    seeds = np.zeros(image.shape, dtype="uint8")
-    image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-    image = cv2.resize(image, (0, 0), fx=SF, fy=SF)
-
-    radius = 10
-    thickness = -1 # fill the whole circle
-    global drawing
-    drawing = False
-
-    #paintSeeds(OBJ)
-    #paintSeeds(BKG)
-    return seeds, image
-
 # Large when ip - iq < sigma, and small otherwise
 def boundaryPenalty(ip, iq):
     bp = 100 * exp(- pow(int(ip) - int(iq), 2) / (2 * pow(SIGMA, 2)))
@@ -89,9 +40,8 @@ def buildGraph(image):
     V = image.size + 2
     graph = np.zeros((V, V), dtype='int32')
     K = makeNLinks(graph, image)
-    seeds, seededImage = plantSeed(image)
-    makeTLinks(graph, image, seeds, K)
-    return graph, seededImage
+    makeTLinks(graph, image, K)
+    return graph
 
 def makeNLinks(graph, image):
     K = -float("inf")
@@ -111,27 +61,18 @@ def makeNLinks(graph, image):
                 K = max(K, bp)
     return K
 
-def makeTLinks(graph, image, seeds, K):
-    r, c = seeds.shape
+def makeTLinks(graph, image, K):
+    r, c = image.shape
 
     for i in range(r):
         for j in range(c):
             x = i * c + j
 
             # darker pixels weighted towards source, lighter towards sink
-            #prob = np.exp(-float(image[i,j]) / 20)
-            #graph[SOURCE][x] = 100 * prob
-            #graph[x][SINK] = 100 * (1 - prob)
-
             if (image[i,j] < 70):
                 graph[SOURCE][x] = 1
             if (image[i,j] >= 100):
                 graph[x][SINK] = 1
-
-            #if seeds[i][j] == OBJCODE:
-            #    graph[SOURCE][x] = K
-            #elif seeds[i][j] == BKGCODE:
-            #    graph[x][SINK] = K
 
 def displayCut(image, cuts):
     def colorPixel(i, j):
@@ -170,7 +111,7 @@ def imageSegmentation(imagefile, size=(30, 30), algo="ff"):
     # apply median filter to remove noise
     image_filtered = median_filter(image, (10,10))
 
-    resizeFactor = 0.2
+    resizeFactor = 0.18
     newSize = (int(resizeFactor * image.shape[1]), int(resizeFactor * image.shape[0]))
 
     image = cv2.resize(image_filtered, newSize)
@@ -185,8 +126,8 @@ def imageSegmentation(imagefile, size=(30, 30), algo="ff"):
 
     plotHistogram(image)
 
-    graph, seededImage = buildGraph(image)
-    cv2.imwrite(pathname + "seeded.jpg", seededImage)
+    graph = buildGraph(image)
+    cv2.imwrite(pathname + "_preprocessed.jpg", image)
 
     global SOURCE, SINK
     SOURCE += len(graph) 
