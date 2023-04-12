@@ -1,0 +1,6 @@
+# Graph Cut Segmentation
+
+Playing with graph cut algorithms for unsupervised image segmentation
+
+Original idea taken from Julie Jiang here:
+https://github.com/julie-jiang/image-segmentation
