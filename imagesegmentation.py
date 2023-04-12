@@ -7,6 +7,7 @@ import argparse
 import time
 from math import exp, pow
 from scipy.ndimage import median_filter
+import matplotlib.pyplot as plt
 
 from augmentingPath import augmentingPath
 from pushRelabel import pushRelabel
@@ -15,7 +16,7 @@ from boykovKolmogorov import boykovKolmogorov
 graphCutAlgo = {"ap": augmentingPath, 
                 "pr": pushRelabel, 
                 "bk": boykovKolmogorov}
-SIGMA = 10.0
+SIGMA = 7.0  # smaller means more sensitive to edges, smaller cuts
 OBJCOLOR, BKGCOLOR = (0, 0, 255), (0, 255, 0)
 OBJCODE, BKGCODE = 1, 2
 OBJ, BKG = "OBJ", "BKG"
@@ -122,9 +123,9 @@ def makeTLinks(graph, image, seeds, K):
             #graph[SOURCE][x] = 100 * prob
             #graph[x][SINK] = 100 * (1 - prob)
 
-            if (image[i,j] < 220):
+            if (image[i,j] < 70):
                 graph[SOURCE][x] = 1
-            if (image[i,j] >= 200):
+            if (image[i,j] >= 100):
                 graph[x][SINK] = 1
 
             #if seeds[i][j] == OBJCODE:
@@ -142,6 +143,21 @@ def displayCut(image, cuts):
         if c[0] != SOURCE and c[0] != SINK and c[1] != SOURCE and c[1] != SINK:
             colorPixel(c[0] // cols, c[0] % cols)
     return image
+
+def plotHistogram(image):
+
+    histogram, bin_edges = np.histogram(image, bins=256, range=(0, 255))
+
+    # configure and draw the histogram figure
+    plt.figure()
+    plt.title("Grayscale Histogram")
+    plt.xlabel("grayscale value")
+    plt.ylabel("pixel count")
+    plt.xlim([0.0, 255.0])  # <- named arguments do not work here
+
+    plt.plot(bin_edges[0:-1], histogram)  # <- or here
+    plt.show()
+
 
 def imageSegmentation(imagefile, size=(30, 30), algo="ff"):
     pathname = os.path.splitext(imagefile)[0]
@@ -165,6 +181,9 @@ def imageSegmentation(imagefile, size=(30, 30), algo="ff"):
     image = image - min_val
     max_val = np.max(image)
     image = (image * (255 / max_val)).astype(np.uint8)
+    #image = cv2.equalizeHist(image)
+
+    plotHistogram(image)
 
     graph, seededImage = buildGraph(image)
     cv2.imwrite(pathname + "seeded.jpg", seededImage)
@@ -185,7 +204,7 @@ def imageSegmentation(imagefile, size=(30, 30), algo="ff"):
     print("Saved image as {}".format(savename))
 
     combinedImg = np.hstack((originalImage, image))
-    cv2.imwrite("output.jpg", combinedImg)
+    cv2.imwrite(pathname + "before_after.jpg", combinedImg)
 
 
 def parseArgs():

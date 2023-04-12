@@ -1,5 +1,6 @@
 from queue import Queue
 import numpy as np
+import time
 import cv2
 
 def bfs(rGraph, nNodes, source_idx, parent):
@@ -16,6 +17,7 @@ def bfs(rGraph, nNodes, source_idx, parent):
                 q.put(v)
                 parent[v] = u
                 visited[v] = True
+
     return visited[v]
 
 def dfs(rGraph, nNodes, source_idx, visited):
@@ -32,6 +34,7 @@ def augmentingPath(graph, source_idx, sink_idx):
     nNodes = graph.shape[0]
     parent = np.zeros(nNodes, dtype='int32')
 
+    start = time.time()
     while bfs(rGraph, nNodes, source_idx, parent):
         pathFlow = float("inf")
 
@@ -49,12 +52,19 @@ def augmentingPath(graph, source_idx, sink_idx):
             rGraph[v][u] += pathFlow
             v = u
 
+    print("BFS time: {}".format(time.time() - start))
+
+    start = time.time()
     visited = np.zeros(nNodes, dtype=bool)
     dfs(rGraph, nNodes, source_idx, visited)
 
+    print("DFS time: {}".format(time.time() - start))
+
+    start = time.time()
     cuts = []
     for i in range(nNodes):
         for j in range(nNodes):
             if not visited[i] and not visited[j] and graph[i][j]:
                 cuts.append((i, j))
+    print("Cuts computation time: {}".format(time.time() - start))
     return cuts
