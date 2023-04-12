@@ -1,5 +1,6 @@
 from queue import Queue
 import numpy as np
+import collections
 import time
 import cv2
 
@@ -12,13 +13,14 @@ def bfs(rGraph, nNodes, source_idx, parent):
 
     while not q.empty():
         u = q.get()
-        for v in range(nNodes):
-            if (not visited[v]) and rGraph[u][v] > 0:
-                q.put(v)
-                parent[v] = u
-                visited[v] = True
 
-    return visited[v]
+        for child in rGraph[u].keys():
+            if (not visited[child]) and rGraph[u][child] > 0:
+                q.put(child)
+                parent[child] = u
+                visited[child] = True
+
+    return visited[child]
 
 def dfs(rGraph, nNodes, source_idx, visited):
     stack = [source_idx]
@@ -26,12 +28,13 @@ def dfs(rGraph, nNodes, source_idx, visited):
         v = stack.pop()
         if not visited[v]:
             visited[v] = True
-            stack.extend([u for u in range(nNodes) if rGraph[v][u]])
+            stack.extend([u for u in rGraph[v].keys() if rGraph[v][u]])
 
 def augmentingPath(graph, source_idx, sink_idx):
     print("Running augmenting path algorithm")
     rGraph = graph.copy()
-    nNodes = graph.shape[0]
+
+    nNodes = len(rGraph)
     parent = np.zeros(nNodes, dtype='int32')
 
     start = time.time()
@@ -61,10 +64,6 @@ def augmentingPath(graph, source_idx, sink_idx):
     print("DFS time: {}".format(time.time() - start))
 
     start = time.time()
-    cuts = []
-    for i in range(nNodes):
-        for j in range(nNodes):
-            if not visited[i] and not visited[j] and graph[i][j]:
-                cuts.append((i, j))
+    cuts = np.where(visited == False)[0]
     print("Cuts computation time: {}".format(time.time() - start))
     return cuts
