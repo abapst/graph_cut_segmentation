@@ -11,11 +11,9 @@ import matplotlib.pyplot as plt
 import collections
 
 from augmentingPath import augmentingPath
-from pushRelabel import pushRelabel
 from boykovKolmogorov import boykovKolmogorov
 
 graphCutAlgo = {"ap": augmentingPath, 
-                "pr": pushRelabel, 
                 "bk": boykovKolmogorov}
 SIGMA = 7.0  # smaller means more sensitive to edges, smaller cuts
 
@@ -125,7 +123,7 @@ def imageSegmentation(imagefile, size=(30, 30), algo="ff"):
     # apply median filter to remove noise
     image_filtered = median_filter(image, (10,10))
 
-    resizeFactor = 0.2
+    resizeFactor = 0.3
     newSize = (int(resizeFactor * image.shape[1]), int(resizeFactor * image.shape[0]))
 
     image = cv2.resize(image_filtered, newSize)
@@ -154,7 +152,7 @@ def imageSegmentation(imagefile, size=(30, 30), algo="ff"):
     show_image(image)
 
     combinedImg = np.hstack((originalImage, image))
-    savename = pathname + "before_after.jpg"
+    savename = pathname + "_before_after.png"
     cv2.imwrite(savename, combinedImg)
     print("Saved image as {}".format(savename))
 

@@ -15,6 +15,7 @@ def pairwise(iterable):
     next(b, None)
     return zip(a, b)   
 
+
 def GetPath(parent: {}, root1: int, root2: int, source_idx: int):
 
     tree1 = [root1]
@@ -111,7 +112,7 @@ def dfs(rGraph, source_idx, visited):
         p = stack.pop()
         if not visited[p]:
             visited[p] = True
-            stack.extend([q for q in rGraph[p].keys() if rGraph[p][q]])
+            stack.extend([q for q in rGraph[p].keys() if rGraph[p][q] > 85])
 
 
 def boykovKolmogorov(graph, source_idx, sink_idx):
