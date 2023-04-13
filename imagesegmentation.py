@@ -21,8 +21,6 @@ SIGMA = 7.0  # smaller means more sensitive to edges, smaller cuts
 
 CUTCOLOR = (0, 0, 255)
 
-#SOURCE, SINK = -2, -1
-SOURCE, SINK = 0, 0
 SF = 10
 
 def show_image(image):
@@ -38,10 +36,10 @@ def boundaryPenalty(ip, iq):
     bp = 100 * exp(- pow(int(ip) - int(iq), 2) / (2 * pow(SIGMA, 2)))
     return bp
 
-def buildGraph(image):
+def buildGraph(image: np.ndarray, SOURCE: int, SINK: int):
     graph = collections.defaultdict(dict)
     K = makeNLinks(graph, image)
-    makeTLinks(graph, image, K)
+    makeTLinks(graph, image, K, SOURCE, SINK)
     return graph
 
 def makeNLinks(graph: collections.defaultdict(dict), image: np.ndarray) -> float:
@@ -67,7 +65,7 @@ def makeNLinks(graph: collections.defaultdict(dict), image: np.ndarray) -> float
                 K = max(K, bp)
     return K
 
-def makeTLinks(graph: collections.defaultdict(dict), image: np.ndarray, K: float):
+def makeTLinks(graph: collections.defaultdict(dict), image: np.ndarray, K: float, SOURCE: int, SINK: int):
     r, c = image.shape
 
     graph[SINK] = {}  # sink has no children
@@ -78,20 +76,20 @@ def makeTLinks(graph: collections.defaultdict(dict), image: np.ndarray, K: float
 
             # darker pixels weighted towards source, lighter towards sink
             if (image[i,j] < 70):
-                graph[SOURCE][x] = 1
+                graph[SOURCE][x] = 100
                 graph[x][SOURCE] = 0
             else:
                 graph[SOURCE][x] = 0
                 graph[x][SOURCE] = 0
 
             if (image[i,j] >= 100):
-                graph[x][SINK] = 1
+                graph[x][SINK] = 100
                 graph[SINK][x] = 0
             else:
                 graph[x][SINK] = 0
                 graph[SINK][x] = 0
 
-def displayCut(image, cuts):
+def displayCut(image, cuts, SOURCE, SINK):
     def colorPixel(i, j):
         image[i][j] = CUTCOLOR
 
@@ -127,7 +125,7 @@ def imageSegmentation(imagefile, size=(30, 30), algo="ff"):
     # apply median filter to remove noise
     image_filtered = median_filter(image, (10,10))
 
-    resizeFactor = 0.4
+    resizeFactor = 0.2
     newSize = (int(resizeFactor * image.shape[1]), int(resizeFactor * image.shape[0]))
 
     image = cv2.resize(image_filtered, newSize)
@@ -140,25 +138,24 @@ def imageSegmentation(imagefile, size=(30, 30), algo="ff"):
     image = (image * (255 / max_val)).astype(np.uint8)
     cv2.imwrite(pathname + "_preprocessed.jpg", image)
 
-    plotHistogram(image)
+    #plotHistogram(image)
 
-    global SOURCE, SINK
-    SOURCE += (image.shape[0] * image.shape[1])
-    SINK   += (image.shape[0] * image.shape[1] + 1)
+    SOURCE = (image.shape[0] * image.shape[1])
+    SINK   = (image.shape[0] * image.shape[1] + 1)
 
-    graph = buildGraph(image)
+    graph = buildGraph(image, SOURCE, SINK)
     
     start = time.time()
     cuts = graphCutAlgo[algo](graph, SOURCE, SINK)
 
     print("Elapsed: {}".format(time.time() - start))
-    image = displayCut(image, cuts)
+    image = displayCut(image, cuts, SOURCE, SINK)
     image = cv2.resize(image, (originalSize[1], originalSize[0]))
     show_image(image)
 
     combinedImg = np.hstack((originalImage, image))
-    cv2.imwrite(savename, combinedImg)
     savename = pathname + "before_after.jpg"
+    cv2.imwrite(savename, combinedImg)
     print("Saved image as {}".format(savename))
 
 def parseArgs():

@@ -2,7 +2,6 @@ from queue import Queue
 import numpy as np
 import collections
 import time
-import cv2
 
 def bfs(rGraph, nNodes, source_idx, parent):
     q = Queue()
