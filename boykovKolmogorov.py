@@ -147,16 +147,13 @@ def boykovKolmogorov(graph, source_idx, sink_idx):
         parent[i] = NO_PARENT
 
     while(True):
-        #print('grow')
         path = GrowthStage(rGraph, activeNodes, tree, parent, source_idx)
         if (path == []):
             break
 
-        #print('augment')
         orphans = Queue()
         AugmentationStage(path, rGraph, tree, parent, orphans)
 
-        #print('adopt')
         AdoptionStage(rGraph, tree, parent, orphans, activeNodes, source_idx, sink_idx)
 
     visited = np.zeros(nNodes, dtype=bool)
