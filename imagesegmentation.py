@@ -17,19 +17,15 @@ from boykovKolmogorov import boykovKolmogorov
 
 graphCutAlgo = {"ek": edmondsKarp, 
                 "bk": boykovKolmogorov}
+
 SIGMA = 7.0  # smaller means more sensitive to edges, smaller cuts
 
-CUTCOLOR = (0, 0, 255)
+CUTCOLOR = (0, 255, 0)
 
-SF = 10
-
-def show_image(image):
+def showImage(image):
     windowname = "Segmentation"
-    cv2.namedWindow(windowname, cv2.WINDOW_NORMAL)
-    cv2.startWindowThread()
     cv2.imshow(windowname, image)
     cv2.waitKey(0)
-    cv2.destroyAllWindows()
     
 # Large when ip - iq < sigma, and small otherwise
 def boundaryPenalty(ip, iq):
@@ -132,7 +128,7 @@ def analyzeHistogram(image):
     plt.show()
     return crossover
 
-def imageSegmentation(imagefile, size=(30, 30), algo="ff"):
+def imageSegmentation(imagefile, resizeFactor: float = 1.0, algo: str = "bk"):
     pathname = os.path.splitext(imagefile)[0]
     image = cv2.imread(imagefile, cv2.IMREAD_GRAYSCALE)
     originalImage = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
@@ -141,41 +137,41 @@ def imageSegmentation(imagefile, size=(30, 30), algo="ff"):
     print("Input image size: {}".format(originalSize))
 
     # apply median filter to remove noise
-    image_filtered = median_filter(image, (10, 10))
+    start = time.time()
+    image_filtered = median_filter(image, (3, 3))
+    print("Median filter time: {}".format(time.time() - start))
 
-    resizeFactor = 1.0
+    # analyze image histogram to select threshold
+    start = time.time()
+    thresh = analyzeHistogram(image)
+    print("Threshold selection time: {}".format(time.time() - start))
+
+    # this is optional, can reduce image size to speed up compute
     newSize = (int(resizeFactor * image.shape[1]), int(resizeFactor * image.shape[0]))
-
     image = cv2.resize(image_filtered, newSize)
     print("Resized image: {}".format(image.shape))
 
-    # rescale image intensity to (0, 255)
-    min_val = np.min(image)
-    image = image - min_val
-    max_val = np.max(image)
-    image = (image * (255 / max_val)).astype(np.uint8)
     cv2.imwrite(pathname + "_preprocessed.jpg", image)
-
-    thresh = analyzeHistogram(image)
-    #thresh = 50
 
     SOURCE = (image.shape[0] * image.shape[1])
     SINK   = (image.shape[0] * image.shape[1] + 1)
 
+    start = time.time()
     graph = buildGraph(image, SOURCE, SINK, thresh)
+    print("Graph building time: {}".format(time.time() - start))
     
     start = time.time()
     cuts = graphCutAlgo[algo](graph, SOURCE, SINK)
+    print("Segmentation time: {}".format(time.time() - start))
 
-    print("Elapsed: {}".format(time.time() - start))
     image = displayCut(image, cuts, SOURCE, SINK)
     image = cv2.resize(image, (originalSize[1], originalSize[0]))
-    show_image(image)
 
     combinedImg = np.hstack((originalImage, image))
     savename = pathname + "_before_after.png"
     cv2.imwrite(savename, combinedImg)
-    print("Saved image as {}".format(savename))
+    print("Saved results image as {}".format(savename))
+    showImage(combinedImg)
 
 def parseArgs():
     def algorithm(string):
@@ -187,12 +183,11 @@ def parseArgs():
     parser = argparse.ArgumentParser()
     parser.add_argument("imagefile")
     parser.add_argument("--size", "-s", 
-                        default=30, type=int,
-                        help="Defaults to 30x30")
+                        default=1.0, type=float,
+                        help="Image scale factor, defaults to 1.0")
     parser.add_argument("--algo", "-a", default="bk", type=algorithm)
     return parser.parse_args()
 
 if __name__ == "__main__":
-
     args = parseArgs()
-    imageSegmentation(args.imagefile, (args.size, args.size), args.algo)
+    imageSegmentation(args.imagefile, args.size, args.algo)
