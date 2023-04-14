@@ -7,13 +7,15 @@ import argparse
 import time
 from math import exp, pow
 from scipy.ndimage import median_filter
+from scipy.stats import norm
 import matplotlib.pyplot as plt
 import collections
+from sklearn.mixture import GaussianMixture
 
-from augmentingPath import augmentingPath
+from edmondsKarp import edmondsKarp
 from boykovKolmogorov import boykovKolmogorov
 
-graphCutAlgo = {"ap": augmentingPath, 
+graphCutAlgo = {"ek": edmondsKarp, 
                 "bk": boykovKolmogorov}
 SIGMA = 7.0  # smaller means more sensitive to edges, smaller cuts
 
@@ -31,13 +33,13 @@ def show_image(image):
     
 # Large when ip - iq < sigma, and small otherwise
 def boundaryPenalty(ip, iq):
-    bp = 100 * exp(- pow(int(ip) - int(iq), 2) / (2 * pow(SIGMA, 2)))
+    bp = int(100 * exp(- pow(int(ip) - int(iq), 2) / (2 * pow(SIGMA, 2))))
     return bp
 
-def buildGraph(image: np.ndarray, SOURCE: int, SINK: int):
+def buildGraph(image: np.ndarray, SOURCE: int, SINK: int, thresh: int):
     graph = collections.defaultdict(dict)
     K = makeNLinks(graph, image)
-    makeTLinks(graph, image, K, SOURCE, SINK)
+    makeTLinks(graph, image, K, SOURCE, SINK, thresh)
     return graph
 
 def makeNLinks(graph: collections.defaultdict(dict), image: np.ndarray) -> float:
@@ -63,7 +65,7 @@ def makeNLinks(graph: collections.defaultdict(dict), image: np.ndarray) -> float
                 K = max(K, bp)
     return K
 
-def makeTLinks(graph: collections.defaultdict(dict), image: np.ndarray, K: float, SOURCE: int, SINK: int):
+def makeTLinks(graph: collections.defaultdict(dict), image: np.ndarray, K: float, SOURCE: int, SINK: int, thresh: int):
     r, c = image.shape
 
     graph[SINK] = {}  # sink has no children
@@ -73,14 +75,14 @@ def makeTLinks(graph: collections.defaultdict(dict), image: np.ndarray, K: float
             x = i * c + j
 
             # darker pixels weighted towards source, lighter towards sink
-            if (image[i,j] < 70):
+            if (image[i,j] < thresh):
                 graph[SOURCE][x] = 100
                 graph[x][SOURCE] = 0
             else:
                 graph[SOURCE][x] = 0
                 graph[x][SOURCE] = 0
 
-            if (image[i,j] >= 100):
+            if (image[i,j] >= thresh):
                 graph[x][SINK] = 100
                 graph[SINK][x] = 0
             else:
@@ -98,9 +100,7 @@ def displayCut(image, cuts, SOURCE, SINK):
             colorPixel(c // cols, c % cols)
     return image
 
-def plotHistogram(image):
-
-    histogram, bin_edges = np.histogram(image, bins=256, range=(0, 255))
+def analyzeHistogram(image):
 
     # configure and draw the histogram figure
     plt.figure()
@@ -109,8 +109,28 @@ def plotHistogram(image):
     plt.ylabel("pixel count")
     plt.xlim([0.0, 255.0])  # <- named arguments do not work here
 
-    plt.plot(bin_edges[0:-1], histogram)  # <- or here
+    histogram, bin_edges = np.histogram(image, bins=256, range=(0, 255))
+    histogram = np.array(histogram) / np.sum(histogram)
+    plt.plot(bin_edges[:-1], histogram)  # <- or here
+
+    gm = GaussianMixture(n_components=2).fit(image.flatten().reshape(-1, 1))
+    x_samples = np.arange(0, 255, 0.5)
+    y_component1 = gm.weights_.flatten()[0] * norm.pdf(x_samples, gm.means_.flatten()[0], gm.covariances_.flatten()[0] ** 0.5)
+    y_component2 = gm.weights_.flatten()[1] * norm.pdf(x_samples, gm.means_.flatten()[1], gm.covariances_.flatten()[1] ** 0.5)
+
+    plt.plot(x_samples, y_component1)
+    plt.plot(x_samples, y_component2)
+
+    print("Component means: {}".format(gm.means_.flatten()))
+
+    # find the crossover point between the two peaks of the normal distributions
+    # (they may have crossovers to the left or right of the peaks as well)
+    mean_loc = [np.argmax(y_component1), np.argmax(y_component2)]
+    crossover = x_samples[np.argmin(abs(y_component1[min(mean_loc):max(mean_loc)] - y_component2[min(mean_loc):max(mean_loc)])) + min(mean_loc)]
+    print(f"Detected threshold: {crossover}")
+
     plt.show()
+    return crossover
 
 def imageSegmentation(imagefile, size=(30, 30), algo="ff"):
     pathname = os.path.splitext(imagefile)[0]
@@ -121,9 +141,9 @@ def imageSegmentation(imagefile, size=(30, 30), algo="ff"):
     print("Input image size: {}".format(originalSize))
 
     # apply median filter to remove noise
-    image_filtered = median_filter(image, (10,10))
+    image_filtered = median_filter(image, (10, 10))
 
-    resizeFactor = 0.3
+    resizeFactor = 1.0
     newSize = (int(resizeFactor * image.shape[1]), int(resizeFactor * image.shape[0]))
 
     image = cv2.resize(image_filtered, newSize)
@@ -136,12 +156,13 @@ def imageSegmentation(imagefile, size=(30, 30), algo="ff"):
     image = (image * (255 / max_val)).astype(np.uint8)
     cv2.imwrite(pathname + "_preprocessed.jpg", image)
 
-    #plotHistogram(image)
+    thresh = analyzeHistogram(image)
+    #thresh = 50
 
     SOURCE = (image.shape[0] * image.shape[1])
     SINK   = (image.shape[0] * image.shape[1] + 1)
 
-    graph = buildGraph(image, SOURCE, SINK)
+    graph = buildGraph(image, SOURCE, SINK, thresh)
     
     start = time.time()
     cuts = graphCutAlgo[algo](graph, SOURCE, SINK)
@@ -168,7 +189,7 @@ def parseArgs():
     parser.add_argument("--size", "-s", 
                         default=30, type=int,
                         help="Defaults to 30x30")
-    parser.add_argument("--algo", "-a", default="ap", type=algorithm)
+    parser.add_argument("--algo", "-a", default="bk", type=algorithm)
     return parser.parse_args()
 
 if __name__ == "__main__":

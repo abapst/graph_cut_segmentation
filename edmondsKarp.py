@@ -29,7 +29,7 @@ def dfs(rGraph, nNodes, source_idx, visited):
             visited[v] = True
             stack.extend([u for u in rGraph[v].keys() if rGraph[v][u]])
 
-def augmentingPath(graph, source_idx, sink_idx):
+def edmondsKarp(graph, source_idx, sink_idx):
     print("Running augmenting path algorithm")
     rGraph = graph.copy()
 

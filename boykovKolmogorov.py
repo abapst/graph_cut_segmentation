@@ -47,7 +47,7 @@ def GrowthStage(rGraph: collections.defaultdict(dict), activeNodes: Queue, tree:
             continue
 
         for q in rGraph[p].keys():
-            if rGraph[p][q]:
+            if rGraph[p][q] > 0:
                 if tree[q] == NO_TREE:
                     activeNodes.put(q)
                     tree[q] = tree[p]
@@ -63,10 +63,14 @@ def AugmentationStage(path: [], rGraph: collections.defaultdict(dict), tree: dic
     for p, q in pairwise(path):
         minFlow = min(minFlow, rGraph[p][q])
 
+    if minFlow <= 0:
+        return
+
     for p, q in pairwise(path):
         rGraph[p][q] -= minFlow
         rGraph[q][p] += minFlow
-        if rGraph[q][p] >= 100:
+
+        if rGraph[q][p] >= 100:  # edge is saturated, label q as an orphan
             if tree[q] == S_TREE and tree[p] == S_TREE:
                 parent[q] = NO_PARENT
                 orphans.put(q)
@@ -90,7 +94,7 @@ def AdoptionStage(rGraph: collections.defaultdict(dict), tree: dict, parent: dic
         foundParent = False
         for q in rGraph[p].keys():
             origin = GetOrigin(parent, q)
-            if tree[q] == tree[p] and rGraph[q][p] and (origin == source_idx or origin == sink_idx):
+            if tree[q] == tree[p] and rGraph[q][p] > 0 and (origin == source_idx or origin == sink_idx):
                 parent[p] = q
                 foundParent = True
                 break
@@ -98,21 +102,22 @@ def AdoptionStage(rGraph: collections.defaultdict(dict), tree: dict, parent: dic
         # otherwise mark it as not active and search for more orphans nearby
         if not foundParent:
             for q in rGraph[p].keys():
-                if tree[q] == tree[p] and rGraph[q][p]:
-                    activeNodes.put(q)
+                if tree[q] == tree[p]:
+                    if rGraph[q][p] > 0:
+                        activeNodes.put(q)
                     if parent[q] == p:
                         orphans.put(q)
                         parent[q] = NO_PARENT
             tree[p] = NO_TREE  # this will mark p as no longer active in activeNodes
 
 
-def dfs(rGraph, source_idx, visited):
+def DFS(rGraph, source_idx, visited):
     stack = [source_idx]
     while stack:
         p = stack.pop()
         if not visited[p]:
             visited[p] = True
-            stack.extend([q for q in rGraph[p].keys() if rGraph[p][q] > 85])
+            stack.extend([q for q in rGraph[p].keys() if rGraph[p][q] == 100])
 
 
 def boykovKolmogorov(graph, source_idx, sink_idx):
@@ -142,17 +147,20 @@ def boykovKolmogorov(graph, source_idx, sink_idx):
         parent[i] = NO_PARENT
 
     while(True):
+        #print('grow')
         path = GrowthStage(rGraph, activeNodes, tree, parent, source_idx)
         if (path == []):
             break
 
+        #print('augment')
         orphans = Queue()
         AugmentationStage(path, rGraph, tree, parent, orphans)
 
+        #print('adopt')
         AdoptionStage(rGraph, tree, parent, orphans, activeNodes, source_idx, sink_idx)
 
     visited = np.zeros(nNodes, dtype=bool)
-    dfs(rGraph, source_idx, visited)
+    DFS(rGraph, source_idx, visited)
     cuts = np.where(visited == False)[0]
 
     print("Done")
