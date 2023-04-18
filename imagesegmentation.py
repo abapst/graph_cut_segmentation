@@ -86,15 +86,26 @@ def makeTLinks(graph: collections.defaultdict(dict), image: np.ndarray, K: float
                 graph[SINK][x] = 0
 
 def displayCut(image, cuts, SOURCE, SINK):
-    def colorPixel(i, j):
-        image[i][j] = CUTCOLOR
 
     rows, cols = image.shape
-    image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+    imageRGB = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
     for c in cuts:
         if c != SOURCE and c != SINK:
-            colorPixel(c // cols, c % cols)
-    return image
+            imageRGB[c // cols][ c % cols] = CUTCOLOR
+    return imageRGB
+
+def displayCutColorMap(image, cuts, SOURCE, SINK):
+
+    cmap = plt.cm.get_cmap('plasma')
+
+    rows, cols = image.shape
+    imageRGB = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+    for c in cuts:
+        if c != SOURCE and c != SINK:
+            originalColor = image[c // cols][c % cols] / 255.
+            newColor = 255 * np.array(cmap(originalColor))[:3]
+            imageRGB[c // cols][c % cols] = newColor
+    return imageRGB
 
 def analyzeHistogram(image):
 
@@ -138,7 +149,7 @@ def imageSegmentation(imagefile, resizeFactor: float = 1.0, algo: str = "bk"):
 
     # apply median filter to remove noise
     start = time.time()
-    image_filtered = median_filter(image, (3, 3))
+    image_filtered = median_filter(image, (7, 7))
     print("Median filter time: {}".format(time.time() - start))
 
     # analyze image histogram to select threshold
@@ -164,10 +175,13 @@ def imageSegmentation(imagefile, resizeFactor: float = 1.0, algo: str = "bk"):
     cuts = graphCutAlgo[algo](graph, SOURCE, SINK)
     print("Segmentation time: {}".format(time.time() - start))
 
-    image = displayCut(image, cuts, SOURCE, SINK)
-    image = cv2.resize(image, (originalSize[1], originalSize[0]))
+    imageRGB = displayCut(image, cuts, SOURCE, SINK)
+    imageRGB = cv2.resize(imageRGB, (originalSize[1], originalSize[0]))
 
-    combinedImg = np.hstack((originalImage, image))
+    imageColorMap = displayCutColorMap(image, cuts, SOURCE, SINK)
+    imageColorMap = cv2.resize(imageColorMap, (originalSize[1], originalSize[0]))
+
+    combinedImg = np.hstack((originalImage, imageRGB, imageColorMap))
     savename = pathname + "_before_after.png"
     cv2.imwrite(savename, combinedImg)
     print("Saved results image as {}".format(savename))
