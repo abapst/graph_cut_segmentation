@@ -11,7 +11,7 @@ The two distributions are then used to prime an augmenting path
 method (default: Boykov-Kolmogorov) which finds the min-cut separating the two
 distributions.
 
-![test1_before_after](https://user-images.githubusercontent.com/12631256/235843181-ac57ccf7-7aac-400a-b207-18e2027f7a7b.png | width=640)
+<img src="https://user-images.githubusercontent.com/12631256/235843181-ac57ccf7-7aac-400a-b207-18e2027f7a7b.png" width="640">
 
 Future improvements:
 - Currently the method assumes the brighter distribution is the foreground (as
