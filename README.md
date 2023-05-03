@@ -5,7 +5,7 @@ and white images. The idea is to separate foreground from background by first
 analyzing the histogram of color intensities and fitting a two-component Gaussian Mixture
 Model (GMM).
 
-<img src="https://user-images.githubusercontent.com/12631256/235843320-7314424d-4a1b-450e-8a8d-62ed8c8c0968.png" width="100" height="100">
+<img src="https://user-images.githubusercontent.com/12631256/235843320-7314424d-4a1b-450e-8a8d-62ed8c8c0968.png" width="640">
 
 The two distributions are then used to prime an augmenting path
 method (default: Boykov-Kolmogorov) which finds the min-cut separating the two
