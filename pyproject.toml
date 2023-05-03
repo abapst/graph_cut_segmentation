@@ -1,0 +1,21 @@
+[project]
+name = "graph_cut_segmentation"
+version = "0.0.1"
+authors = [
+  { name="Aleksander Bapst", email="alekbapst@gmail.com" },
+]
+description = "Playing with graph cut segmentation"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+graph-cut-segmentation = "graph_cut_segmentation:main"
+
+[project.urls]
+"Homepage" = "https://github.com/abapst/graph_cut_segmentation"
+"Bug Tracker" = "https://github.com/abapst/graph_cut_segmentation/issues"

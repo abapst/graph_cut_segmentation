@@ -12,10 +12,10 @@ import matplotlib.pyplot as plt
 import collections
 from sklearn.mixture import GaussianMixture
 
-from edmondsKarp import edmondsKarp
-from boykovKolmogorov import boykovKolmogorov
+from graph_cut_segmentation import edmondsKarp
+from graph_cut_segmentation import boykovKolmogorov
 
-graphCutAlgo = {"ek": edmondsKarp, 
+graphCutAlgo = {"ek": edmondsKarp,
                 "bk": boykovKolmogorov}
 
 SIGMA = 7.0  # smaller means more sensitive to edges, smaller cuts
@@ -139,7 +139,7 @@ def analyzeHistogram(image):
     plt.show()
     return crossover
 
-def imageSegmentation(imagefile, resizeFactor: float = 1.0, algo: str = "bk"):
+def main(imagefile, resizeFactor: float = 1.0, algo: str = "bk"):
     pathname = os.path.splitext(imagefile)[0]
     image = cv2.imread(imagefile, cv2.IMREAD_GRAYSCALE)
     originalImage = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
@@ -204,4 +204,4 @@ def parseArgs():
 
 if __name__ == "__main__":
     args = parseArgs()
-    imageSegmentation(args.imagefile, args.size, args.algo)
+    main(args.imagefile, args.size, args.algo)
