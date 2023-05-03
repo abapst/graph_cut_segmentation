@@ -7,7 +7,7 @@ Model (GMM).
 
 <img src="https://user-images.githubusercontent.com/12631256/235843320-7314424d-4a1b-450e-8a8d-62ed8c8c0968.png" width="480">
 
-The two distributions are then used to prime an augmenting path
+The two distributions are then used to select a threshold for priming an augmenting path
 method (default: Boykov-Kolmogorov) which finds the min-cut separating the two
 distributions.
 
@@ -19,6 +19,7 @@ Future improvements:
 analyze the average of the center pixels vs the border pixels to figure out
 which distribution is the foreground.
 -  Segmenting multiple targets based on multi-component GMM.
+-  Better ways of selecting thresholds and priming the augmented path to avoid ragged edges and holes in the final mask.
 
 # Install locally
 
